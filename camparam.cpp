@@ -32,8 +32,8 @@ KeyValuePair videoProcAmpProperties[] = {
     {(char *)"gain", VideoProcAmp_Gain}};
 
 const int MAX_COMMANDS = 18;
-int commandCount = 0;
-KeyValuePair commands[MAX_COMMANDS] = {};
+int g_commandCount = 0;
+KeyValuePair g_commands[MAX_COMMANDS] = {};
 
 void exitWithMessage(int code, const char *message)
 {
@@ -58,13 +58,13 @@ void processArguments(int argc, char *argv[])
         else
             exitWithMessage(1, "Invalid arguments.");
 
-        commands[commandCount].key = name;
-        commands[commandCount].value = value;
-        commands[commandCount].flags = change_flags;
+        g_commands[g_commandCount].key = name;
+        g_commands[g_commandCount].value = value;
+        g_commands[g_commandCount].flags = change_flags;
 
-        commandCount++;
+        g_commandCount++;
 
-        if (commandCount > MAX_COMMANDS)
+        if (g_commandCount > MAX_COMMANDS)
             exitWithMessage(1, "Too many arguments.");
     }
 }
@@ -125,7 +125,7 @@ int main(int argc, char *argv[])
         resultHandle = propertyBag->Read(L"FriendlyName", &variant, 0);
 
         // Print device name if other command were given.
-        if (commandCount == 0)
+        if (g_commandCount == 0)
             fprintf(stderr, "%d %ls\n", deviceCount, variant.bstrVal);
 
         VariantClear(&variant);
@@ -134,13 +134,13 @@ int main(int argc, char *argv[])
     }
 
     // Exit if no commands were given.
-    if (commandCount == 0)
+    if (g_commandCount == 0)
         exit(0);
 
     // Get device.
     int deviceIndex;
 
-    KeyValuePair *keyValuePair = getKeyValuePairByKey(commands, commandCount, (char *)"device");
+    KeyValuePair *keyValuePair = getKeyValuePairByKey(g_commands, g_commandCount, (char *)"device");
     if (keyValuePair != NULL)
     {
         deviceIndex = keyValuePair->value;
@@ -188,9 +188,9 @@ int main(int argc, char *argv[])
 
     // Loop through commands.
     int updatedProperties = 0;
-    for (int i = 0; i < commandCount; i++)
+    for (int i = 0; i < g_commandCount; i++)
     {
-        KeyValuePair command = commands[i];
+        KeyValuePair command = g_commands[i];
 
         // Skip the device command.
         if (_stricmp(command.key, "device") == 0)
@@ -199,12 +199,12 @@ int main(int argc, char *argv[])
         // Process video proc commands.
         KeyValuePair *videoProcAmpProperty = getKeyValuePairByKey(videoProcAmpProperties,
                                                                   videoProcAmpPropertyCount,
-                                                                  commands[i].key);
+                                                                  g_commands[i].key);
         if (videoProcAmpProperty != NULL)
         {
             // If there was no auto setting, then use value from the command
             // line
-            if (commands[i].flags == KeyValuePair::flag_manual)
+            if (g_commands[i].flags == KeyValuePair::flag_manual)
             {
                 videoProcAmp->Set(videoProcAmpProperty->value, command.value, VideoProcAmp_Flags_Manual);
                 fprintf(stdout, "%s %d\n", command.key, command.value);
@@ -226,7 +226,7 @@ int main(int argc, char *argv[])
         // Process camera control commands.
         KeyValuePair *cameraControlProperty = getKeyValuePairByKey(cameraControlProperties,
                                                                    cameraControlPropertyCount,
-                                                                   commands[i].key);
+                                                                   g_commands[i].key);
         if (cameraControlProperty != NULL)
         {
             cameraControl->Set(cameraControlProperty->value, command.value, CameraControl_Flags_Manual);
