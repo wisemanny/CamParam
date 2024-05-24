@@ -54,6 +54,16 @@ Exposure -5
 Gain 64
 ```
 
+```
+// Turn on Auto mode for a paramater
+
+CamParam.exe device 0 whitebalance auto
+
+// Output
+
+Auto for whitebalance is, keep value 6347 
+```
+
 ## Acknowledgements
 
 The basis of this program is heavily influenced by [CommandCam](https://github.com/tedburke/CommandCam/).
