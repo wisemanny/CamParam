@@ -3,7 +3,7 @@
 
 struct KeyValuePair
 {
-    char *key;
+    const char *key;
     int value;
     enum Flags {flag_manual, flag_auto} flags;
 };
@@ -37,7 +37,7 @@ KeyValuePair commands[MAX_COMMANDS] = {};
 
 void exitWithMessage(int code, const char *message)
 {
-    fprintf(stderr, message);
+    fprintf(stderr, "%s", message);
     exit(code);
 }
 
@@ -69,7 +69,8 @@ void processArguments(int argc, char *argv[])
     }
 }
 
-KeyValuePair *getKeyValuePairByKey(KeyValuePair keyValuePairs[], int count, char *key)
+KeyValuePair *getKeyValuePairByKey(KeyValuePair keyValuePairs[], int count,
+                                   const char *key)
 {
     KeyValuePair *keyValuePair = NULL;
 
@@ -201,18 +202,22 @@ int main(int argc, char *argv[])
                                                                   commands[i].key);
         if (videoProcAmpProperty != NULL)
         {
+            // If there was no auto setting, then use value from the command
+            // line
             if (commands[i].flags == KeyValuePair::flag_manual)
             {
                 videoProcAmp->Set(videoProcAmpProperty->value, command.value, VideoProcAmp_Flags_Manual);
                 fprintf(stdout, "%s %d\n", command.key, command.value);
             }
+            // Else we know it was auto, but let's query current value when
+            // updating flags to preseve it
             else
             {
                 long value, flags = 0;
                 videoProcAmp->Get(videoProcAmpProperty->value, &value, &flags);
                 videoProcAmp->Set(videoProcAmpProperty->value, value,
                                   VideoProcAmp_Flags_Auto);
-                fprintf(stdout, "Auto for %s %ld\n", command.key, value);
+                fprintf(stdout, "Auto for %s is on, keep value %ld\n", command.key, value);
             }
             updatedProperties++;
             continue;
