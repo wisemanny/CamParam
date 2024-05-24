@@ -5,6 +5,7 @@ struct KeyValuePair
 {
     char *key;
     int value;
+    enum Flags {flag_manual, flag_auto} flags;
 };
 
 const int cameraControlPropertyCount = 7;
@@ -46,14 +47,20 @@ void processArguments(int argc, char *argv[])
     {
         char *name = argv[i];
         int value = 0;
+        KeyValuePair::Flags change_flags = KeyValuePair::flag_manual;
+
 
         if (++i < argc)
-            value = atoi(argv[i]);
+            if (_stricmp(argv[i], "auto") == 0)
+                change_flags = KeyValuePair::flag_auto;
+            else
+                value = atoi(argv[i]);
         else
             exitWithMessage(1, "Invalid arguments.");
 
         commands[commandCount].key = name;
         commands[commandCount].value = value;
+        commands[commandCount].flags = change_flags;
 
         commandCount++;
 
@@ -68,7 +75,7 @@ KeyValuePair *getKeyValuePairByKey(KeyValuePair keyValuePairs[], int count, char
 
     for (int i = 0; i < count; i++)
     {
-        if (stricmp(key, keyValuePairs[i].key) == 0)
+        if (_stricmp(key, keyValuePairs[i].key) == 0)
         {
             keyValuePair = &keyValuePairs[i];
         }
@@ -185,7 +192,7 @@ int main(int argc, char *argv[])
         KeyValuePair command = commands[i];
 
         // Skip the device command.
-        if (stricmp(command.key, "device") == 0)
+        if (_stricmp(command.key, "device") == 0)
             continue;
 
         // Process video proc commands.
@@ -194,8 +201,19 @@ int main(int argc, char *argv[])
                                                                   commands[i].key);
         if (videoProcAmpProperty != NULL)
         {
-            videoProcAmp->Set(videoProcAmpProperty->value, command.value, VideoProcAmp_Flags_Manual);
-            fprintf(stdout, "%s %d\n", command.key, command.value);
+            if (commands[i].flags == KeyValuePair::flag_manual)
+            {
+                videoProcAmp->Set(videoProcAmpProperty->value, command.value, VideoProcAmp_Flags_Manual);
+                fprintf(stdout, "%s %d\n", command.key, command.value);
+            }
+            else
+            {
+                long value, flags = 0;
+                videoProcAmp->Get(videoProcAmpProperty->value, &value, &flags);
+                videoProcAmp->Set(videoProcAmpProperty->value, value,
+                                  VideoProcAmp_Flags_Auto);
+                fprintf(stdout, "Auto for %s %ld\n", command.key, value);
+            }
             updatedProperties++;
             continue;
         }
@@ -233,8 +251,13 @@ int main(int argc, char *argv[])
             KeyValuePair property = videoProcAmpProperties[i];
             long value, flags = 0;
             resultHandle = videoProcAmp->Get(property.value, &value, &flags);
+            const char *flagStr = "[Unknown]";
+            if (flags == VideoProcAmp_Flags_Manual)
+                flagStr = "";
+            else if (flags == VideoProcAmp_Flags_Auto)
+                flagStr = "[A]";
             if (resultHandle == S_OK)
-                fprintf(stdout, "%s %ld\n", property.key, value);
+                fprintf(stdout, "%s %ld %s\n", property.key, value, flagStr);
         }
     }
 
