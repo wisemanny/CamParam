@@ -5,7 +5,12 @@ struct KeyValuePair
 {
     const char *key;
     int value;
-    enum Flags {flag_manual, flag_auto} flags;
+    enum Flags {
+        flag_set,           // Set value from the command line
+        flag_auto,          // Set auto but keep the value
+        flag_increase,      // Increase current value by the value of argument
+        flag_decrease       // Decrease current value by the value of argument
+    } flags;
 };
 
 const int cameraControlPropertyCount = 7;
@@ -47,14 +52,30 @@ void processArguments(int argc, char *argv[])
     {
         char *name = argv[i];
         int value = 0;
-        KeyValuePair::Flags change_flags = KeyValuePair::flag_manual;
+        KeyValuePair::Flags change_flags = KeyValuePair::flag_set;
 
 
         if (++i < argc)
+         {
             if (_stricmp(argv[i], "auto") == 0)
+            {
                 change_flags = KeyValuePair::flag_auto;
+            }
+            else if (argv[i][0] == '+')
+            {
+                change_flags = KeyValuePair::flag_increase;
+                value = abs(atoi(argv[i]));
+            }
+            else if (argv[i][0] == '-')
+            {
+                change_flags = KeyValuePair::flag_decrease;
+                value = abs(atoi(argv[i]));
+            }
             else
+            {
                 value = atoi(argv[i]);
+            }
+        }
         else
             exitWithMessage(1, "Invalid arguments.");
 
@@ -202,22 +223,57 @@ int main(int argc, char *argv[])
                                                                   g_commands[i].key);
         if (videoProcAmpProperty != NULL)
         {
-            // If there was no auto setting, then use value from the command
-            // line
-            if (g_commands[i].flags == KeyValuePair::flag_manual)
+            switch(g_commands[i].flags)
             {
-                videoProcAmp->Set(videoProcAmpProperty->value, command.value, VideoProcAmp_Flags_Manual);
-                fprintf(stdout, "%s %d\n", command.key, command.value);
-            }
-            // Else we know it was auto, but let's query current value when
-            // updating flags to preseve it
-            else
-            {
-                long value, flags = 0;
-                videoProcAmp->Get(videoProcAmpProperty->value, &value, &flags);
-                videoProcAmp->Set(videoProcAmpProperty->value, value,
-                                  VideoProcAmp_Flags_Auto);
-                fprintf(stdout, "Auto for %s is on, keep value %ld\n", command.key, value);
+                case KeyValuePair::flag_set:
+                    {
+                        videoProcAmp->Set(videoProcAmpProperty->value, command.value, VideoProcAmp_Flags_Manual);
+                        fprintf(stdout, "%s %d\n", command.key, command.value);
+                        break;
+                    }
+
+                case KeyValuePair::flag_auto:
+                    {
+                        long value, flags = 0;
+                        videoProcAmp->Get(videoProcAmpProperty->value, &value, &flags);
+                        videoProcAmp->Set(videoProcAmpProperty->value, value,
+                                          VideoProcAmp_Flags_Auto);
+                        fprintf(stdout, "Auto for %s is on, keep value %ld\n", command.key, value);
+                        break;
+                    }
+
+                case KeyValuePair::flag_increase:
+                    {
+                        long value, flags = 0;
+                        videoProcAmp->Get(videoProcAmpProperty->value, &value, &flags);
+
+                        value += g_commands[i].value;
+                        videoProcAmp->Set(videoProcAmpProperty->value,
+                                          value,
+                                          VideoProcAmp_Flags_Manual);
+
+                        // Get the value that was actually set
+                        videoProcAmp->Get(videoProcAmpProperty->value, &value, &flags);
+                        fprintf(stdout, "Increase value for %s by %d, new value %ld\n",
+                                command.key, g_commands[i].value, value);
+                        break;
+                    }
+
+                case KeyValuePair::flag_decrease:
+                    {
+                        long value, flags = 0;
+                        videoProcAmp->Get(videoProcAmpProperty->value, &value, &flags);
+
+                        value -= g_commands[i].value;
+                        videoProcAmp->Set(videoProcAmpProperty->value,
+                                          value,
+                                          VideoProcAmp_Flags_Manual);
+
+                        // Get the value that was actually set
+                        fprintf(stdout, "Decrease value for %s by %d, new value %ld\n",
+                                command.key, g_commands[i].value, value);
+                        break;
+                    }
             }
             updatedProperties++;
             continue;
