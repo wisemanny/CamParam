@@ -55,13 +55,24 @@ Gain 64
 ```
 
 ```
-// Turn on Auto mode for a paramater
+// Turn on Auto mode for a parameter
 
 CamParam.exe device 0 whitebalance auto
 
 // Output
 
 Auto for whitebalance is, keep value 6347 
+```
+
+```
+// Increase/Decrease value - start the value with + or - signs
+// New value is queried through API to ensure that we list the same as was put
+
+CamParam.exe device 0 whitebalance +10
+
+// Output
+
+Increase value for whitebalance by 10, new value 6357
 ```
 
 ## Acknowledgements
